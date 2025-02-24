@@ -6,6 +6,22 @@
   <!-- 引入Bootstrap -->
   <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.2.3/css/bootstrap.min.css" rel="stylesheet">
 </head>
+<script>
+  // 动态数字增长效果
+  document.querySelector('.number').innerHTML = 0
+  let count = 0
+  setInterval(() => {
+    if(count < 1234) {
+      count += 17
+      document.querySelector('.number').innerHTML = count
+    }
+  }, 30)
+  
+  // 点击统计（需接入Google Analytics）
+  document.querySelector('.btn-primary').addEventListener('click', () => {
+    alert('功能开发中，即将上线！')
+  })
+  </script>
 <body>
 
 <!-- 导航栏 -->
