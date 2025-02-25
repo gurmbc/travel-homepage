@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>漫游记 - 行程助手</title>
+  <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.2.3/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .container { max-width: 1000px; margin: 40px auto; }
+    .itinerary-table { margin-top: 30px; }
+    .time-column { min-width: 120px; }
+    .highlight { background-color: #f8f9fa; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <!-- 输入表单 -->
+  <form id="form" onsubmit="generateItinerary(event)">
+    <h2 class="mb-4">行程规划</h2>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">目的地</label>
+        <select class="form-select" id="destination" required>
+          <option value="">请选择</option>
+          <option value="tokyo">东京</option>
+          <option value="paris">巴黎</option>
+          <option value="bangkok">曼谷</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">出发日期</label>
+        <input type="date" class="form-control" id="startDate" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">返回日期</label>
+        <input type="date" class="form-control" id="endDate" required>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary mt-3">生成行程</button>
+  </form>
+
+  <!-- 行程输出 -->
+  <div id="output" class="itinerary-table" style="display: none;">
+    <h4 class="mb-3">您的行程安排</h4>
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover">
+        <thead class="table-light">
+          <tr>
+            <th>天数</th>
+            <th>北京时间</th>
+            <th>当地时间</th>
+            <th>活动内容</th>
+            <th>交通方式</th>
+            <th>出发地</th>
+            <th>目的地</th>
+            <th>酒店住宿</th>
+          </tr>
+        </thead>
+        <tbody id="itineraryBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function generateItinerary(e) {
+  e.preventDefault();
+  
+  // 获取输入值
+  const destination = document.getElementById('destination').value;
+  const startDate = new Date(document.getElementById('startDate').value);
+  const endDate = new Date(document.getElementById('endDate').value);
+  
+  // 计算天数
+  const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+  
+  // 生成模拟数据
+  const itineraryData = [];
+  for(let i = 0; i < days; i++) {
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + i);
+    
+    // 模拟每日安排
+    const dayActivities = [
+      {
+        beijingTime: "08:00-09:00",
+        localTime: "09:00-10:00",
+        activity: "早餐",
+        transport: "步行",
+        from: "酒店",
+        to: "餐厅",
+        hotel: i === 0 ? "机场酒店" : "市中心酒店"
+      },
+      {
+        beijingTime: "10:00-12:00",
+        localTime: "11:00-13:00",
+        activity: "景点游览",
+        transport: "地铁",
+        from: "餐厅",
+        to: "著名景点",
+        hotel: ""
+      }
+    ];
+
+    // 添加出发/返程安排
+    if(i === 0) {
+      dayActivities.unshift({
+        beijingTime: "06:00-12:00",
+        localTime: "07:00-13:00",
+        activity: "乘机前往目的地",
+        transport: "飞机",
+        from: "北京首都机场",
+        to: "目的地机场",
+        hotel: ""
+      });
+    }
+    if(i === days-1) {
+      dayActivities.push({
+        beijingTime: "18:00-24:00",
+        localTime: "19:00-01:00",
+        activity: "返程航班",
+        transport: "飞机",
+        from: "目的地机场",
+        to: "北京首都机场",
+        hotel: ""
+      });
+    }
+
+    itineraryData.push({
+      day: `DAY ${i+1}`,
+      date: date.toLocaleDateString(),
+      activities: dayActivities
+    });
+  }
+
+  // 渲染表格
+  const tbody = document.getElementById('itineraryBody');
+  tbody.innerHTML = '';
+  
+  itineraryData.forEach(day => {
+    day.activities.forEach((activity, index) => {
+      const row = document.createElement('tr');
+      if(index === 0) row.classList.add('highlight');
+      
+      row.innerHTML = `
+        <td>${index === 0 ? day.day : ''}</td>
+        <td class="time-column">${activity.beijingTime}</td>
+        <td class="time-column">${activity.localTime}</td>
+        <td>${activity.activity}</td>
+        <td>${activity.transport}</td>
+        <td>${activity.from}</td>
+        <td>${activity.to}</td>
+        <td>${activity.hotel}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  });
+
+  document.getElementById('output').style.display = 'block';
+}
+</script>
+</body>
+</html>
