@@ -1,163 +1,184 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>漫游记 - 行程助手</title>
-  <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.2.3/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    .container { max-width: 1000px; margin: 40px auto; }
-    .itinerary-table { margin-top: 30px; }
-    .time-column { min-width: 120px; }
-    .highlight { background-color: #f8f9fa; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI行程助手 - 漫游记</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.2.3/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        }
+        .transport-badge {
+            background: #e3f2fd;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 0.9em;
+        }
+        .hotel-info {
+            background: #f8f9fa;
+            border-left: 3px solid #0d6efd;
+            padding: 10px;
+            margin: 10px 0;
+        }
+    </style>
 </head>
 <body>
-<div class="container">
-  <!-- 输入表单 -->
-  <form id="form" onsubmit="generateItinerary(event)">
-    <h2 class="mb-4">行程规划</h2>
-    <div class="row g-3">
-      <div class="col-md-6">
-        <label class="form-label">目的地</label>
-        <select class="form-select" id="destination" required>
-          <option value="">请选择</option>
-          <option value="tokyo">东京</option>
-          <option value="paris">巴黎</option>
-          <option value="bangkok">曼谷</option>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">出发日期</label>
-        <input type="date" class="form-control" id="startDate" required>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">返回日期</label>
-        <input type="date" class="form-control" id="endDate" required>
-      </div>
-    </div>
-    <button type="submit" class="btn btn-primary mt-3">生成行程</button>
-  </form>
+<div class="container py-4">
+    <!-- 输入表单 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h3 class="mb-4">✈️ 智能行程生成器</h3>
+            <form id="itineraryForm">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">目的地</label>
+                        <input type="text" class="form-control" id="destination" required 
+                               placeholder="例如：东京、巴黎...">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">出发日期</label>
+                        <input type="date" class="form-control" id="startDate" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">旅行天数</label>
+                        <select class="form-select" id="days" required>
+                            <option value="3">3天</option>
+                            <option value="5" selected>5天</option>
+                            <option value="7">7天</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <label class="form-label">旅行偏好（可多选）</label>
+                    <div class="d-flex gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="culture">
+                            <label class="form-check-label" for="culture">🏯 文化历史</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="food">
+                            <label class="form-check-label" for="food">🍣 美食体验</label>
+                        </div>
+                    </div>
+                </div>
 
-  <!-- 行程输出 -->
-  <div id="output" class="itinerary-table" style="display: none;">
-    <h4 class="mb-3">您的行程安排</h4>
-    <div class="table-responsive">
-      <table class="table table-bordered table-hover">
-        <thead class="table-light">
-          <tr>
-            <th>天数</th>
-            <th>北京时间</th>
-            <th>当地时间</th>
-            <th>活动内容</th>
-            <th>交通方式</th>
-            <th>出发地</th>
-            <th>目的地</th>
-            <th>酒店住宿</th>
-          </tr>
-        </thead>
-        <tbody id="itineraryBody"></tbody>
-      </table>
+                <button type="submit" class="btn btn-primary mt-3">
+                    <span class="spinner-border spinner-border-sm" id="loadingSpinner" style="display: none;"></span>
+                    生成智能行程
+                </button>
+            </form>
+        </div>
     </div>
-  </div>
+
+    <!-- 行程输出 -->
+    <div id="output" class="card" style="display: none;">
+        <div class="card-body">
+            <h4 class="mb-4">📅 您的专属行程安排</h4>
+            <div id="itineraryContent"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 加载动画 -->
+<div class="loading">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
 </div>
 
 <script>
-function generateItinerary(e) {
-  e.preventDefault();
-  
-  // 获取输入值
-  const destination = document.getElementById('destination').value;
-  const startDate = new Date(document.getElementById('startDate').value);
-  const endDate = new Date(document.getElementById('endDate').value);
-  
-  // 计算天数
-  const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-  
-  // 生成模拟数据
-  const itineraryData = [];
-  for(let i = 0; i < days; i++) {
-    const date = new Date(startDate);
-    date.setDate(date.getDate() + i);
-    
-    // 模拟每日安排
-    const dayActivities = [
-      {
-        beijingTime: "08:00-09:00",
-        localTime: "09:00-10:00",
-        activity: "早餐",
-        transport: "步行",
-        from: "酒店",
-        to: "餐厅",
-        hotel: i === 0 ? "机场酒店" : "市中心酒店"
-      },
-      {
-        beijingTime: "10:00-12:00",
-        localTime: "11:00-13:00",
-        activity: "景点游览",
-        transport: "地铁",
-        from: "餐厅",
-        to: "著名景点",
-        hotel: ""
-      }
-    ];
+// 模拟AI服务接口（正式环境需替换为真实API）
+const MOCK_API_RESPONSE = {
+    "itinerary": [
+        {
+            "day": 1,
+            "date": "2024-07-01",
+            "sections": [
+                {
+                    "time": "08:00-09:00",
+                    "title": "早餐",
+                    "detail": "酒店自助早餐",
+                    "transport": "步行/5分钟"
+                },
+                {
+                    "time": "09:30-12:00",
+                    "title": "浅草文化体验",
+                    "detail": "参观浅草寺、仲见世商店街",
+                    "transport": "地铁银座线/20分钟"
+                }
+            ],
+            "hotel": {
+                "name": "东京皇家酒店",
+                "features": ["市中心位置", "4.8分好评"]
+            }
+        }
+    ],
+    "advice": "推荐购买地铁三日券，节省交通费用"
+};
 
-    // 添加出发/返程安排
-    if(i === 0) {
-      dayActivities.unshift({
-        beijingTime: "06:00-12:00",
-        localTime: "07:00-13:00",
-        activity: "乘机前往目的地",
-        transport: "飞机",
-        from: "北京首都机场",
-        to: "目的地机场",
-        hotel: ""
-      });
+async function generateItinerary(event) {
+    event.preventDefault();
+    showLoading(true);
+
+    try {
+        // 正式环境需要调用真实API
+        // const response = await fetchAIResponse();
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 模拟延迟
+        renderItinerary(MOCK_API_RESPONSE);
+    } catch (error) {
+        alert("生成失败：" + error.message);
+    } finally {
+        showLoading(false);
     }
-    if(i === days-1) {
-      dayActivities.push({
-        beijingTime: "18:00-24:00",
-        localTime: "19:00-01:00",
-        activity: "返程航班",
-        transport: "飞机",
-        from: "目的地机场",
-        to: "北京首都机场",
-        hotel: ""
-      });
-    }
-
-    itineraryData.push({
-      day: `DAY ${i+1}`,
-      date: date.toLocaleDateString(),
-      activities: dayActivities
-    });
-  }
-
-  // 渲染表格
-  const tbody = document.getElementById('itineraryBody');
-  tbody.innerHTML = '';
-  
-  itineraryData.forEach(day => {
-    day.activities.forEach((activity, index) => {
-      const row = document.createElement('tr');
-      if(index === 0) row.classList.add('highlight');
-      
-      row.innerHTML = `
-        <td>${index === 0 ? day.day : ''}</td>
-        <td class="time-column">${activity.beijingTime}</td>
-        <td class="time-column">${activity.localTime}</td>
-        <td>${activity.activity}</td>
-        <td>${activity.transport}</td>
-        <td>${activity.from}</td>
-        <td>${activity.to}</td>
-        <td>${activity.hotel}</td>
-      `;
-      tbody.appendChild(row);
-    });
-  });
-
-  document.getElementById('output').style.display = 'block';
 }
+
+function renderItinerary(data) {
+    const container = document.getElementById('itineraryContent');
+    let html = '';
+
+    data.itinerary.forEach(day => {
+        html += `
+            <div class="day-card mb-4 p-3 border rounded">
+                <h5 class="mb-3">📌 第${day.day}天（${day.date}）</h5>
+                ${day.sections.map(section => `
+                    <div class="section mb-3">
+                        <div class="d-flex justify-content-between">
+                            <div class="fw-bold">🕒 ${section.time}</div>
+                            <span class="transport-badge">${section.transport}</span>
+                        </div>
+                        <div class="ms-3">
+                            <div class="fw-bold">${section.title}</div>
+                            <div class="text-muted">${section.detail}</div>
+                        </div>
+                    </div>
+                `).join('')}
+                <div class="hotel-info">
+                    <div class="fw-bold">🏨 当日住宿</div>
+                    <div>${day.hotel.name}</div>
+                    <small class="text-muted">${day.hotel.features.join(' · ')}</small>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `<div class="alert alert-info mt-3">💡 小贴士：${data.advice}</div>`;
+    container.innerHTML = html;
+    document.getElementById('output').style.display = 'block';
+}
+
+function showLoading(show) {
+    document.querySelector('.loading').style.display = show ? 'block' : 'none';
+    document.getElementById('loadingSpinner').style.display = show ? 'inline-block' : 'none';
+}
+
+// 初始化表单提交
+document.getElementById('itineraryForm').addEventListener('submit', generateItinerary);
 </script>
+
 </body>
 </html>
